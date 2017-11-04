@@ -1,0 +1,312 @@
+#include "stdafx.h" 
+#include <stdlib.h> 
+
+//4. —реди строк матрицы определить те строки, которые €вл€ютс€ перестановкой 
+//из n символов, где nЧ - размерность матрицы. 
+// на входе: ћатрица, размерность матрицы, символы 
+//выход:строка, котора€ содержит все номера строк, в которых присутствуют все элементы от 0 до n 
+bool* Matrix(int** arr, int N) { 
+bool* res = 0; // нова€ строка после преобразований 
+bool* flags = 0; 
+
+__asm{ 
+// выделили пам€ть дл€ массива результата 
+mov eax, N; 
+push eax; 
+call dword ptr malloc 
+add esp, 4; 
+mov res, eax; 
+//выделили пам€ть дл€ массива флагов 
+mov eax, N; 
+push eax; 
+call dword ptr malloc 
+add esp, 4; 
+mov flags, eax; 
+
+xor esi, esi; 
+mov ebx, arr; 
+
+
+
+WHILE: //массив по столбцам 
+cmp esi, N; //пока esi-счетчик не равен N 
+je NEXT; 
+//обнуление флагов 
+mov ecx, N; 
+CLEAR_FLAGS: 
+mov byte ptr[eax][ecx - 1], 0; 
+loop CLEAR_FLAGS; 
+
+mov edx, [ebx][esi * 4]; 
+mov ecx, N; 
+INNER: // массив по строчкам, берем первый элемент, смотрим чему он равен и записываем в массив флагов 1,дл€ этого эл-та, который найден 
+// cmp esi, ecx;// дошли мы до конца строчки? 
+//je CHECK_FLAGS; 
+mov edi, [edx][ecx * 4 - 4]; 
+cmp edi, 0; 
+jle NO;// если <= 
+cmp edi, N; 
+jg NO; 
+mov byte ptr[eax][edi - 1], 1; 
+loop INNER; 
+
+
+mov ecx, N; 
+CHECK_FLAGS://массив флагов, прошлись по нему и посмотрели все ли 1 в этой строке 
+cmp byte ptr[eax][ecx - 1], 1; 
+jne NO; 
+loop CHECK_FLAGS; 
+//массив результата 
+mov edx, res; 
+mov byte ptr[edx][esi], 1;//записали 1 в массив результата, если строчка-перестановка 
+jmp YES; 
+
+NO://если размер матрицы <=0 или >N, если строчка не €вл€етс€ перестановкой 
+mov edx, res; 
+mov byte ptr[edx][esi], 0; 
+
+YES: 
+inc esi; 
+jmp WHILE; 
+NEXT: 
+//разрушили массив флагов 
+mov eax, flags; 
+push eax; // eax положили в стек 
+call dword ptr free 
+add esp, 4; 
+
+
+mov eax, res; 
+
+} 
+} 
+//создаем матрицу 
+int** Create(int N) { 
+__asm { 
+mov eax, N; 
+shl eax, 2; 
+push eax; // eax положили в стек 
+call dword ptr malloc 
+add esp, 4; 
+
+mov edx, eax; 
+mov ecx, N; 
+CYCLE: 
+push edx; 
+push ecx 
+
+mov eax, N; 
+shl eax, 2; 
+push eax; // eax положили в стек 
+call dword ptr malloc 
+add esp, 4; 
+
+pop ecx; 
+pop edx; 
+
+mov[edx][ecx * 4 - 4], eax; 
+
+loop CYCLE 
+mov eax, edx; 
+
+
+
+} 
+} 
+//удал€ем матрицу 
+void Destroy(int** Matrix, int N) { 
+__asm { 
+mov ecx, N; 
+mov ebx, Matrix; 
+
+CYCLE_1: 
+push ecx; 
+push ebx; 
+
+mov edx, [ebx][ecx * 4 - 4]; 
+push edx; 
+call dword ptr free 
+add esp, 4; 
+
+pop ebx; 
+pop ecx; 
+
+loop CYCLE_1; 
+
+push ebx; 
+call dword ptr free; 
+add esp, 4; 
+
+
+} 
+} 
+//печать матрицы 
+void printMatrix(int**Matrix, int N) { 
+char*StringIntFormat = "%d\t"; 
+char*LineBreakFormat = "\n"; 
+
+__asm { 
+xor esi, esi; 
+mov ebx, Matrix; 
+WHILE: 
+cmp esi, N; 
+je EXTERNAL; 
+
+mov edx, [ebx][esi * 4]; 
+//mov ecx, N; 
+xor edi, edi; 
+push esi; 
+push ebx; 
+WHILE_INNER_MAS: 
+cmp edi, N; 
+je EXTERNAL_1; 
+mov ecx, [edx][edi * 4]; 
+
+
+push ebx; 
+push edx; 
+
+// printf(StringIntFormat,ecx) 
+push ecx; 
+mov ecx, StringIntFormat; 
+push ecx; 
+call dword ptr printf; 
+add esp, 8; 
+
+pop edx; 
+pop ebx; 
+
+
+inc edi; 
+
+jmp WHILE_INNER_MAS; 
+
+EXTERNAL_1: 
+//printf(LineBreakFormat) 
+mov eax, LineBreakFormat; 
+push eax; 
+call dword ptr printf; 
+add esp, 4; 
+
+pop ebx; 
+pop esi; 
+
+inc esi; 
+
+jmp WHILE; 
+EXTERNAL: 
+
+
+
+} 
+} 
+int get(int**matrix, int N, int i, int j) { 
+
+__asm { 
+mov eax, i; 
+mov ebx, j; 
+mov ecx, matrix; 
+mov eax, [ecx + 4 * eax]; 
+mov eax, [eax + ebx * 4]; 
+
+} 
+} 
+void set(int**matrix, int N, int i, int j, int k) { 
+
+__asm { 
+mov eax, i; 
+mov ebx, j; 
+mov ecx, k; 
+mov edx, matrix; 
+mov esi, [edx][eax * 4]; 
+mov[esi][ebx * 4], ecx; 
+} 
+} 
+void getPermutations(int**matrix, int N) { 
+char*StringIntFormat = "%d\t"; 
+__asm { 
+
+mov ecx, N; 
+push ecx; 
+mov ecx, matrix; 
+push ecx; 
+call dword ptr Matrix;
+add esp, 8; 
+
+mov ecx, N; 
+xor esi, esi; 
+WHILE: 
+cmp esi, N; 
+je FIN; 
+cmp byte ptr[eax][esi], 1; 
+jne NEXT; 
+//printf("%d ", esi) 
+push eax; 
+mov ecx, StringIntFormat; 
+push esi; 
+push ecx; 
+call dword ptr printf; 
+add esp, 4; 
+pop esi; 
+pop eax; 
+
+NEXT: 
+
+inc esi; 
+
+jmp WHILE; 
+FIN: 
+//free(eax) 
+push eax; 
+call dword ptr free; 
+add esp, 4; 
+
+} 
+
+} 
+
+//вывод на экран 
+void main() { 
+int 
+**matrix = 0; 
+const int N = 3; 
+
+matrix = Create(N); 
+matrix[0][0] = 2; 
+matrix[0][1] = 5; 
+matrix[0][2] = 3; 
+matrix[1][0] = 9; 
+matrix[1][1] = 3; 
+matrix[1][2] = 2; 
+matrix[2][0] = 0; 
+matrix[2][1] = 0; 
+matrix[2][2] = 0; 
+
+printMatrix(matrix, N); 
+printf("get (1,0) = %i \n", get(matrix, N, 1, 0)); 
+set(matrix, N, 1, 0, 1); 
+printMatrix(matrix, N); 
+getPermutations(matrix, N); 
+Destroy(matrix, N); 
+
+__asm { 
+//gets_s(s, len) 
+
+
+//scanf_s("%d", &N); 
+
+
+
+
+//printf(строка) 
+
+
+
+
+
+
+} 
+system("pause"); 
+
+
+}
